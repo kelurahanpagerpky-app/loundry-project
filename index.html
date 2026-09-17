@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Masuk | MHC-Laundry</title>
+<meta name="description" content="MHC-Laundry — Sistem manajemen laundry: pesanan, pelanggan, layanan, dan laporan keuangan dalam satu aplikasi." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%22.9em%22 font-size=%2222%22>🧺</text></svg>" />
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link rel="stylesheet" href="assets/css/style.css" />
+<style>
+  body { background: radial-gradient(circle at 50% 0%, #0a192f 0%, #020617 60%); min-height: 100vh; }
+</style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen text-slate-200 px-4">
+
+<main class="w-full max-w-md">
+  <section class="bg-[#0f172a]/80 backdrop-blur-sm border border-slate-800 rounded-[2rem] p-8 sm:p-10 shadow-2xl ll-fade-in">
+    <div class="flex flex-col items-center mb-8">
+      <div class="w-16 h-16 bg-[#00bcd4] rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-cyan-500/20">
+        <span class="material-symbols-outlined text-white text-3xl">local_laundry_service</span>
+      </div>
+      <h1 class="text-2xl font-bold tracking-tight text-white mb-1">MHC-Laundry</h1>
+      <p class="text-xs text-slate-400 font-medium">Bersih, Cepat &amp; Terpercaya</p>
+    </div>
+
+    <form id="login-form" class="space-y-5" novalidate>
+      <div class="space-y-1.5">
+        <label for="username" class="flex items-center gap-2 text-xs font-medium text-slate-400">
+          <span class="material-symbols-outlined text-[16px]">person</span> Username
+        </label>
+        <input id="username" name="username" type="text" autocomplete="username" placeholder="username"
+          class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2.5 px-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all" />
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="password" class="flex items-center gap-2 text-xs font-medium text-slate-400">
+          <span class="material-symbols-outlined text-[16px]">lock</span> Password
+        </label>
+        <div class="relative">
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="password"
+            class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2.5 px-4 pr-10 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all" />
+          <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300">
+            <span class="material-symbols-outlined text-[18px]">visibility</span>
+          </button>
+        </div>
+      </div>
+
+      <p id="login-error" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2"></p>
+
+      <button type="submit" class="w-full bg-[#00bcd4] hover:bg-cyan-500 text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors duration-200 shadow-lg shadow-cyan-500/20">
+        <span class="material-symbols-outlined text-[18px]">login</span> Masuk
+      </button>
+
+      <div class="flex justify-center pt-2">
+        <button type="button" id="demo-button" class="bg-[#1e293b] hover:bg-[#2d3748] border border-slate-700 text-slate-400 text-[11px] uppercase tracking-wider font-bold py-2 px-4 rounded-md flex items-center gap-2 transition-all">
+          <span class="material-symbols-outlined text-[16px]">visibility</span> Masuk Mode Demo
+        </button>
+      </div>
+    </form>
+
+    <p class="text-center text-[11px] text-slate-500 mt-6">
+      Kredensial demo: <span class="text-slate-300 font-mono">admin</span> / <span class="text-slate-300 font-mono">admin123</span>
+    </p>
+  </section>
+
+  <p class="text-center text-[11px] text-slate-600 mt-6">© <span id="year"></span> MHC-Laundry. Data tersimpan lokal di perangkat Anda.</p>
+</main>
+
+<script src="assets/js/db.js"></script>
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // If already logged in, skip straight to dashboard.
+  if (LL.getSession()) {
+    window.location.href = 'dashboard.html';
+  }
+
+  const passwordInput = document.getElementById('password');
+  const toggleBtn = document.getElementById('toggle-password');
+  toggleBtn.addEventListener('click', () => {
+    const isPw = passwordInput.getAttribute('type') === 'password';
+    passwordInput.setAttribute('type', isPw ? 'text' : 'password');
+    toggleBtn.querySelector('.material-symbols-outlined').textContent = isPw ? 'visibility_off' : 'visibility';
+  });
+
+  const form = document.getElementById('login-form');
+  const errorBox = document.getElementById('login-error');
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.classList.remove('hidden');
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    if (!username || !password) {
+      showError('Username dan password wajib diisi.');
+      return;
+    }
+    const session = LL.login(username, password);
+    if (session) {
+      window.location.href = 'dashboard.html';
+    } else {
+      showError('Username atau password salah. Gunakan admin / admin123, atau coba Mode Demo.');
+    }
+  });
+
+  document.getElementById('demo-button').addEventListener('click', () => {
+    LL.loginDemo();
+    window.location.href = 'dashboard.html';
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard | MHC-Laundry</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%22.9em%22 font-size=%2222%22>🧺</text></svg>" />
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link rel="stylesheet" href="assets/css/style.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="ll-layout-root"></div>
+
+<template id="tpl-content">
+  <div class="space-y-6 ll-fade-in">
+    <!-- Stat cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-slate-400 text-xs font-medium">Pesanan Hari Ini</span>
+          <span class="material-symbols-outlined text-cyan-400 text-[20px]">today</span>
+        </div>
+        <p id="stat-today-orders" class="text-2xl font-bold text-white">0</p>
+      </div>
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-slate-400 text-xs font-medium">Pendapatan Bulan Ini</span>
+          <span class="material-symbols-outlined text-emerald-400 text-[20px]">payments</span>
+        </div>
+        <p id="stat-month-revenue" class="text-2xl font-bold text-white">Rp0</p>
+      </div>
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-slate-400 text-xs font-medium">Sedang Diproses</span>
+          <span class="material-symbols-outlined text-amber-400 text-[20px]">sync</span>
+        </div>
+        <p id="stat-processing" class="text-2xl font-bold text-white">0</p>
+      </div>
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-slate-400 text-xs font-medium">Total Pelanggan</span>
+          <span class="material-symbols-outlined text-violet-400 text-[20px]">groups</span>
+        </div>
+        <p id="stat-customers" class="text-2xl font-bold text-white">0</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-semibold text-white">Pendapatan 7 Hari Terakhir</h2>
+        </div>
+        <canvas id="revenue-chart" height="110"></canvas>
+      </div>
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <h2 class="text-sm font-semibold text-white mb-4">Status Pesanan Aktif</h2>
+        <div id="status-breakdown" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-white/5">
+        <h2 class="text-sm font-semibold text-white">Pesanan Terbaru</h2>
+        <a href="pesanan.html" class="text-xs text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1">
+          Lihat semua <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+        </a>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-slate-400 text-xs uppercase tracking-wide border-b border-white/5">
+              <th class="px-5 py-3 font-medium">Invoice</th>
+              <th class="px-5 py-3 font-medium">Pelanggan</th>
+              <th class="px-5 py-3 font-medium">Tanggal</th>
+              <th class="px-5 py-3 font-medium">Total</th>
+              <th class="px-5 py-3 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody id="recent-orders-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="assets/js/db.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+  LL.requireAuth();
+  LLLayout.render('dashboard.html');
+  LLLayout.setTitle('Dashboard');
+  document.getElementById('ll-page-content').innerHTML = document.getElementById('tpl-content').innerHTML;
+
+  const STATUS_STYLES = {
+    'Baru': 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+    'Proses': 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    'Selesai': 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    'Diambil': 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+    'Batal': 'bg-red-500/15 text-red-300 border-red-500/30',
+  };
+
+  function badge(status) {
+    const cls = STATUS_STYLES[status] || STATUS_STYLES['Baru'];
+    return `<span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium border ${cls}">${status}</span>`;
+  }
+
+  async function init() {
+    const db = await LL.getDB();
+    if (db._offline) {
+      LLLayout.toast('Gagal terhubung ke Google Sheets, menampilkan data cadangan lokal.', 'error');
+    }
+
+    // ---- Stats ----
+    const today = LL.todayISO();
+    const monthPrefix = today.slice(0, 7);
+    const todayOrders = db.orders.filter((o) => o.createdAt === today);
+    const monthRevenue = db.orders
+      .filter((o) => (o.createdAt || '').startsWith(monthPrefix))
+      .reduce((sum, o) => sum + o.total, 0);
+    const processing = db.orders.filter((o) => o.status === 'Proses').length;
+
+    document.getElementById('stat-today-orders').textContent = todayOrders.length;
+    document.getElementById('stat-month-revenue').textContent = LL.fmtCurrency(monthRevenue);
+    document.getElementById('stat-processing').textContent = processing;
+    document.getElementById('stat-customers').textContent = db.customers.length;
+
+    // ---- Status breakdown ----
+    const statuses = ['Baru', 'Proses', 'Selesai', 'Diambil'];
+    const breakdownEl = document.getElementById('status-breakdown');
+    const maxCount = Math.max(1, ...statuses.map((s) => db.orders.filter((o) => o.status === s).length));
+    breakdownEl.innerHTML = statuses
+      .map((s) => {
+        const count = db.orders.filter((o) => o.status === s).length;
+        const pct = Math.round((count / maxCount) * 100);
+        return `
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">${s}</span>
+              <span class="text-slate-400">${count}</span>
+            </div>
+            <div class="h-2 rounded-full bg-white/5 overflow-hidden">
+              <div class="h-full rounded-full bg-[#00bcd4]" style="width:${pct}%"></div>
+            </div>
+          </div>`;
+      })
+      .join('');
+
+    // ---- Recent orders table ----
+    const recent = [...db.orders].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 6);
+    const tbody = document.getElementById('recent-orders-body');
+    tbody.innerHTML = recent
+      .map((o) => {
+        const cust = db.customers.find((c) => c.id === o.customerId);
+        return `
+          <tr class="border-b border-white/5 last:border-0 hover:bg-white/[.02]">
+            <td class="px-5 py-3 font-medium text-white">${o.id}</td>
+            <td class="px-5 py-3 text-slate-300">${cust ? cust.name : '—'}</td>
+            <td class="px-5 py-3 text-slate-400">${LL.fmtDate(o.createdAt)}</td>
+            <td class="px-5 py-3 text-slate-300">${LL.fmtCurrency(o.total)}</td>
+            <td class="px-5 py-3">${badge(o.status)}</td>
+          </tr>`;
+      })
+      .join('') || `<tr><td colspan="5" class="px-5 py-8 text-center text-slate-500">Belum ada pesanan.</td></tr>`;
+
+    // ---- Revenue chart (last 7 days) ----
+    const labels = [];
+    const values = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = LL.todayISO(-i);
+      labels.push(LL.fmtDate(d).slice(0, 6));
+      values.push(db.orders.filter((o) => o.createdAt === d).reduce((sum, o) => sum + o.total, 0));
+    }
+    new Chart(document.getElementById('revenue-chart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Pendapatan',
+          data: values,
+          backgroundColor: '#00bcd4',
+          borderRadius: 6,
+          maxBarThickness: 36,
+        }],
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+          y: { ticks: { color: '#94a3b8', callback: (v) => 'Rp' + v / 1000 + 'rb' }, grid: { color: 'rgba(255,255,255,.05)' } },
+        },
+      },
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>

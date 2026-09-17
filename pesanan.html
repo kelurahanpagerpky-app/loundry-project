@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pesanan | MHC-Laundry</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%22.9em%22 font-size=%2222%22>🧺</text></svg>" />
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+<div id="ll-layout-root"></div>
+
+<template id="tpl-content">
+  <div class="space-y-4 ll-fade-in">
+    <!-- Filters -->
+    <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-4 flex flex-col lg:flex-row gap-3 lg:items-center">
+      <div class="relative flex-1">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">search</span>
+        <input id="f-search" type="text" placeholder="Cari invoice atau nama pelanggan..."
+          class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      </div>
+      <select id="f-status" class="bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+        <option value="">Semua Status</option>
+        <option>Baru</option>
+        <option>Proses</option>
+        <option>Selesai</option>
+        <option>Diambil</option>
+        <option>Batal</option>
+      </select>
+      <select id="f-payment" class="bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+        <option value="">Semua Pembayaran</option>
+        <option>Lunas</option>
+        <option>Belum Lunas</option>
+      </select>
+      <input id="f-date" type="date" class="bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      <button id="f-clear" class="text-xs text-slate-400 hover:text-white px-2 whitespace-nowrap">Reset filter</button>
+    </div>
+
+    <!-- Quick chips -->
+    <div class="flex flex-wrap gap-2" id="quick-chips"></div>
+
+    <!-- Table -->
+    <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-slate-400 text-xs uppercase tracking-wide border-b border-white/5">
+              <th class="px-5 py-3 font-medium">Invoice</th>
+              <th class="px-5 py-3 font-medium">Pelanggan</th>
+              <th class="px-5 py-3 font-medium">Tanggal</th>
+              <th class="px-5 py-3 font-medium">Total</th>
+              <th class="px-5 py-3 font-medium">Pembayaran</th>
+              <th class="px-5 py-3 font-medium">Status</th>
+              <th class="px-5 py-3 font-medium text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="orders-body"></tbody>
+        </table>
+      </div>
+      <p id="empty-state" class="hidden text-center text-slate-500 py-10 text-sm">Tidak ada pesanan yang cocok dengan filter.</p>
+    </div>
+  </div>
+</template>
+
+<!-- Add/Edit modal -->
+<div id="order-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4">
+  <div class="bg-[#0d1c2d] border border-white/10 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-white/5 sticky top-0 bg-[#0d1c2d] z-10">
+      <h3 id="modal-title" class="font-semibold text-white">Pesanan Baru</h3>
+      <button id="modal-close" class="text-slate-400 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="order-form" class="p-5 space-y-4">
+      <input type="hidden" id="order-id" />
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Pelanggan</label>
+        <select id="order-customer" required class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"></select>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-xs text-slate-400">Item Layanan</label>
+          <button type="button" id="add-item-row" class="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">add</span>Tambah item
+          </button>
+        </div>
+        <div id="order-items" class="space-y-2"></div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Status</label>
+          <select id="order-status" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+            <option>Baru</option><option>Proses</option><option>Selesai</option><option>Diambil</option><option>Batal</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Pembayaran</label>
+          <select id="order-payment" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+            <option>Belum Lunas</option><option>Lunas</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Catatan</label>
+        <textarea id="order-notes" rows="2" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"></textarea>
+      </div>
+
+      <div class="flex items-center justify-between border-t border-white/5 pt-4">
+        <div>
+          <p class="text-xs text-slate-400">Total</p>
+          <p id="order-total-display" class="text-lg font-bold text-white">Rp0</p>
+        </div>
+        <div class="flex gap-2">
+          <button type="button" id="modal-cancel" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/5">Batal</button>
+          <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium bg-[#00bcd4] hover:bg-cyan-500 text-white">Simpan</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Detail drawer -->
+<div id="detail-drawer" class="fixed inset-0 z-50 hidden">
+  <div id="drawer-overlay" class="absolute inset-0 bg-black/60"></div>
+  <aside class="absolute right-0 top-0 h-full w-full max-w-md bg-[#0d1c2d] border-l border-white/10 overflow-y-auto">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-white/5 sticky top-0 bg-[#0d1c2d]">
+      <h3 class="font-semibold text-white">Detail Pesanan</h3>
+      <button id="drawer-close" class="text-slate-400 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div id="drawer-content" class="p-5 space-y-4 text-sm"></div>
+  </aside>
+</div>
+
+<script src="assets/js/db.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+  LL.requireAuth();
+  LLLayout.render('pesanan.html');
+  LLLayout.setTitle('Manajemen Pesanan');
+  LLLayout.setActions(`
+    <button id="btn-new-order" class="bg-[#00bcd4] hover:bg-cyan-500 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-1.5">
+      <span class="material-symbols-outlined text-[18px]">add</span> Pesanan Baru
+    </button>`);
+  document.getElementById('ll-page-content').innerHTML = document.getElementById('tpl-content').innerHTML;
+
+  let db = { customers: [], services: [], orders: [] };
+
+  async function refresh() {
+    db = await LL.getDB();
+    if (db._offline) LLLayout.toast('Gagal terhubung ke Google Sheets, menampilkan data cadangan lokal.', 'error');
+    renderTable();
+  }
+
+  const STATUS_STYLES = {
+    'Baru': 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+    'Proses': 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    'Selesai': 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    'Diambil': 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+    'Batal': 'bg-red-500/15 text-red-300 border-red-500/30',
+  };
+  const PAY_STYLES = {
+    'Lunas': 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    'Belum Lunas': 'bg-red-500/15 text-red-300 border-red-500/30',
+  };
+  function badge(text, map) {
+    return `<span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium border ${map[text] || ''}">${text}</span>`;
+  }
+
+  // ---------- Filter state ----------
+  const state = { search: '', status: '', payment: '', date: '', quick: '' };
+
+  const chipsEl = document.getElementById('quick-chips');
+  const quickFilters = [
+    { key: '', label: 'Semua' },
+    { key: 'Baru', label: 'Baru' },
+    { key: 'Proses', label: 'Proses' },
+    { key: 'Selesai', label: 'Selesai' },
+    { key: 'Diambil', label: 'Diambil' },
+  ];
+  function renderChips() {
+    chipsEl.innerHTML = quickFilters
+      .map((q) => {
+        const active = state.quick === q.key;
+        return `<button data-quick="${q.key}" class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+          active ? 'bg-[#00bcd4] text-white border-[#00bcd4]' : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'
+        }">${q.label}</button>`;
+      })
+      .join('');
+    chipsEl.querySelectorAll('[data-quick]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.quick = btn.dataset.quick;
+        state.status = state.quick; // quick chip drives the status filter too
+        document.getElementById('f-status').value = state.quick;
+        renderChips();
+        renderTable();
+      });
+    });
+  }
+
+  function getFiltered() {
+    return db.orders.filter((o) => {
+      const cust = db.customers.find((c) => c.id === o.customerId);
+      const custName = cust ? cust.name.toLowerCase() : '';
+      const matchesSearch =
+        !state.search ||
+        o.id.toLowerCase().includes(state.search) ||
+        custName.includes(state.search);
+      const matchesStatus = !state.status || o.status === state.status;
+      const matchesPayment = !state.payment || o.paymentStatus === state.payment;
+      const matchesDate = !state.date || o.createdAt === state.date;
+      return matchesSearch && matchesStatus && matchesPayment && matchesDate;
+    });
+  }
+
+  function renderTable() {
+    const rows = getFiltered().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    const tbody = document.getElementById('orders-body');
+    const empty = document.getElementById('empty-state');
+    if (rows.length === 0) {
+      tbody.innerHTML = '';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    tbody.innerHTML = rows
+      .map((o) => {
+        const cust = db.customers.find((c) => c.id === o.customerId);
+        return `
+        <tr class="border-b border-white/5 last:border-0 hover:bg-white/[.02] cursor-pointer" data-id="${o.id}">
+          <td class="px-5 py-3 font-medium text-white">${o.id}</td>
+          <td class="px-5 py-3 text-slate-300">${cust ? cust.name : '—'}</td>
+          <td class="px-5 py-3 text-slate-400">${LL.fmtDate(o.createdAt)}</td>
+          <td class="px-5 py-3 text-slate-300">${LL.fmtCurrency(o.total)}</td>
+          <td class="px-5 py-3">${badge(o.paymentStatus, PAY_STYLES)}</td>
+          <td class="px-5 py-3">${badge(o.status, STATUS_STYLES)}</td>
+          <td class="px-5 py-3 text-right">
+            <div class="flex justify-end gap-1">
+              <button data-action="print" data-id="${o.id}" title="Cetak struk" class="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white">
+                <span class="material-symbols-outlined text-[18px]">print</span>
+              </button>
+              <button data-action="edit" data-id="${o.id}" title="Ubah" class="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white">
+                <span class="material-symbols-outlined text-[18px]">edit</span>
+              </button>
+              <button data-action="delete" data-id="${o.id}" title="Hapus" class="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-red-400">
+                <span class="material-symbols-outlined text-[18px]">delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+      })
+      .join('');
+
+    tbody.querySelectorAll('tr[data-id]').forEach((tr) => {
+      tr.addEventListener('click', (e) => {
+        if (e.target.closest('[data-action]')) return;
+        openDrawer(tr.dataset.id);
+      });
+    });
+    tbody.querySelectorAll('[data-action="print"]').forEach((btn) =>
+      btn.addEventListener('click', () => (window.location.href = `struk.html?id=${btn.dataset.id}`))
+    );
+    tbody.querySelectorAll('[data-action="edit"]').forEach((btn) =>
+      btn.addEventListener('click', () => openModal(btn.dataset.id))
+    );
+    tbody.querySelectorAll('[data-action="delete"]').forEach((btn) =>
+      btn.addEventListener('click', () => deleteOrder(btn.dataset.id))
+    );
+  }
+
+  document.getElementById('f-search').addEventListener('input', (e) => {
+    state.search = e.target.value.trim().toLowerCase();
+    renderTable();
+  });
+  document.getElementById('f-status').addEventListener('change', (e) => {
+    state.status = e.target.value;
+    state.quick = state.status;
+    renderChips();
+    renderTable();
+  });
+  document.getElementById('f-payment').addEventListener('change', (e) => {
+    state.payment = e.target.value;
+    renderTable();
+  });
+  document.getElementById('f-date').addEventListener('change', (e) => {
+    state.date = e.target.value;
+    renderTable();
+  });
+  document.getElementById('f-clear').addEventListener('click', () => {
+    state.search = ''; state.status = ''; state.payment = ''; state.date = ''; state.quick = '';
+    document.getElementById('f-search').value = '';
+    document.getElementById('f-status').value = '';
+    document.getElementById('f-payment').value = '';
+    document.getElementById('f-date').value = '';
+    renderChips();
+    renderTable();
+  });
+
+  // ---------- Delete ----------
+  async function deleteOrder(id) {
+    if (!confirm(`Hapus pesanan ${id}? Tindakan ini tidak dapat dibatalkan.`)) return;
+    try {
+      await LL.deleteOrder(id);
+      await refresh();
+      LLLayout.toast('Pesanan dihapus.', 'success');
+    } catch (err) {
+      LLLayout.toast('Gagal menghapus: ' + err.message, 'error');
+    }
+  }
+
+  // ---------- Detail drawer ----------
+  const drawer = document.getElementById('detail-drawer');
+  function openDrawer(id) {
+    const o = db.orders.find((x) => x.id === id);
+    if (!o) return;
+    const cust = db.customers.find((c) => c.id === o.customerId);
+    document.getElementById('drawer-content').innerHTML = `
+      <div class="flex items-center justify-between">
+        <h4 class="text-white font-semibold text-base">${o.id}</h4>
+        ${badge(o.status, STATUS_STYLES)}
+      </div>
+      <div class="bg-white/5 rounded-xl p-4 space-y-1">
+        <p class="text-white font-medium">${cust ? cust.name : '—'}</p>
+        <p class="text-slate-400 text-xs">${cust ? cust.phone : ''}</p>
+        <p class="text-slate-400 text-xs">${cust ? cust.address : ''}</p>
+      </div>
+      <div>
+        <p class="text-xs text-slate-400 mb-2">Item</p>
+        <div class="space-y-1.5">
+          ${o.items
+            .map(
+              (it) => `<div class="flex justify-between text-slate-300">
+                <span>${it.name} <span class="text-slate-500">×${it.qty} ${it.unit}</span></span>
+                <span>${LL.fmtCurrency(it.price * it.qty)}</span>
+              </div>`
+            )
+            .join('')}
+        </div>
+      </div>
+      <div class="flex justify-between border-t border-white/10 pt-3">
+        <span class="text-slate-400">Total</span>
+        <span class="text-white font-bold">${LL.fmtCurrency(o.total)}</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div><p class="text-slate-500">Tanggal Masuk</p><p class="text-slate-200">${LL.fmtDate(o.createdAt)}</p></div>
+        <div><p class="text-slate-500">Estimasi Selesai</p><p class="text-slate-200">${LL.fmtDate(o.dueAt)}</p></div>
+        <div><p class="text-slate-500">Pembayaran</p><p>${badge(o.paymentStatus, PAY_STYLES)}</p></div>
+      </div>
+      ${o.notes ? `<div><p class="text-xs text-slate-500 mb-1">Catatan</p><p class="text-slate-300 text-sm">${o.notes}</p></div>` : ''}
+      <div class="flex gap-2 pt-2">
+        <button id="drawer-print" class="flex-1 bg-white/5 hover:bg-white/10 text-slate-200 text-sm py-2 rounded-lg flex items-center justify-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">print</span> Cetak Struk
+        </button>
+        <button id="drawer-edit" class="flex-1 bg-[#00bcd4] hover:bg-cyan-500 text-white text-sm py-2 rounded-lg flex items-center justify-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">edit</span> Ubah
+        </button>
+      </div>
+    `;
+    document.getElementById('drawer-print').addEventListener('click', () => (window.location.href = `struk.html?id=${o.id}`));
+    document.getElementById('drawer-edit').addEventListener('click', () => { closeDrawer(); openModal(o.id); });
+    drawer.classList.remove('hidden');
+    drawer.classList.add('flex');
+  }
+  function closeDrawer() {
+    drawer.classList.add('hidden');
+    drawer.classList.remove('flex');
+  }
+  document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+  document.getElementById('drawer-overlay').addEventListener('click', closeDrawer);
+
+  // ---------- Add/Edit modal ----------
+  const modal = document.getElementById('order-modal');
+  const form = document.getElementById('order-form');
+  const itemsWrap = document.getElementById('order-items');
+  const customerSelect = document.getElementById('order-customer');
+
+  function populateCustomerSelect() {
+    customerSelect.innerHTML = db.customers
+      .map((c) => `<option value="${c.id}">${c.name} — ${c.phone}</option>`)
+      .join('');
+  }
+
+  function itemRow(item) {
+    const row = document.createElement('div');
+    row.className = 'flex gap-2 items-center';
+    const options = db.services
+      .map((s) => `<option value="${s.id}" ${item && item.serviceId === s.id ? 'selected' : ''}>${s.name} (${LL.fmtCurrency(s.price)}/${s.unit})</option>`)
+      .join('');
+    row.innerHTML = `
+      <select class="item-service flex-1 bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">${options}</select>
+      <input type="number" min="1" value="${item ? item.qty : 1}" class="item-qty w-20 bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-2 text-sm text-white text-center focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      <button type="button" class="remove-item text-slate-500 hover:text-red-400"><span class="material-symbols-outlined text-[18px]">close</span></button>
+    `;
+    row.querySelector('.item-service').addEventListener('change', updateTotalDisplay);
+    row.querySelector('.item-qty').addEventListener('input', updateTotalDisplay);
+    row.querySelector('.remove-item').addEventListener('click', () => {
+      if (itemsWrap.children.length > 1) {
+        row.remove();
+        updateTotalDisplay();
+      }
+    });
+    return row;
+  }
+
+  document.getElementById('add-item-row').addEventListener('click', () => {
+    itemsWrap.appendChild(itemRow(null));
+    updateTotalDisplay();
+  });
+
+  function updateTotalDisplay() {
+    let total = 0;
+    itemsWrap.querySelectorAll('.flex.gap-2').forEach((row) => {
+      const svcId = row.querySelector('.item-service').value;
+      const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+      const svc = db.services.find((s) => s.id === svcId);
+      if (svc) total += svc.price * qty;
+    });
+    document.getElementById('order-total-display').textContent = LL.fmtCurrency(total);
+  }
+
+  function openModal(id) {
+    populateCustomerSelect();
+    itemsWrap.innerHTML = '';
+    const o = id ? db.orders.find((x) => x.id === id) : null;
+    document.getElementById('modal-title').textContent = o ? `Ubah Pesanan ${o.id}` : 'Pesanan Baru';
+    document.getElementById('order-id').value = o ? o.id : '';
+    document.getElementById('order-status').value = o ? o.status : 'Baru';
+    document.getElementById('order-payment').value = o ? o.paymentStatus : 'Belum Lunas';
+    document.getElementById('order-notes').value = o ? o.notes : '';
+    if (o) {
+      customerSelect.value = o.customerId;
+      o.items.forEach((it) => itemsWrap.appendChild(itemRow(it)));
+    } else {
+      itemsWrap.appendChild(itemRow(null));
+    }
+    updateTotalDisplay();
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+  function closeModal() {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    form.reset();
+  }
+  document.getElementById('btn-new-order').addEventListener('click', () => openModal(null));
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const items = [];
+    itemsWrap.querySelectorAll('.flex.gap-2').forEach((row) => {
+      const svcId = row.querySelector('.item-service').value;
+      const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+      const svc = db.services.find((s) => s.id === svcId);
+      if (svc && qty > 0) items.push({ serviceId: svc.id, name: svc.name, price: svc.price, unit: svc.unit, qty });
+    });
+    if (items.length === 0) {
+      LLLayout.toast('Tambahkan minimal satu item layanan.', 'error');
+      return;
+    }
+    const total = items.reduce((sum, it) => sum + it.price * it.qty, 0);
+    const existingId = document.getElementById('order-id').value;
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Menyimpan...';
+
+    const payload = {
+      id: existingId || undefined,
+      customerId: customerSelect.value,
+      items,
+      total,
+      status: document.getElementById('order-status').value,
+      paymentStatus: document.getElementById('order-payment').value,
+      notes: document.getElementById('order-notes').value.trim(),
+    };
+    if (!existingId) {
+      payload.createdAt = LL.todayISO();
+      payload.dueAt = LL.todayISO(1);
+    }
+
+    try {
+      await LL.saveOrder(payload);
+      LLLayout.toast(existingId ? 'Pesanan diperbarui.' : 'Pesanan baru berhasil dibuat.', 'success');
+      closeModal();
+      await refresh();
+    } catch (err) {
+      LLLayout.toast('Gagal menyimpan: ' + err.message, 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Simpan';
+    }
+  });
+
+  // ---------- init ----------
+  renderChips();
+  refresh().then(() => {
+    // Support ?new=1 to jump straight into the "new order" modal from the sidebar
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('new') === '1') openModal(null);
+  });
+</script>
+</body>
+</html>

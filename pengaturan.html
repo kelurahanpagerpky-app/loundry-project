@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pengaturan | MHC-Laundry</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%22.9em%22 font-size=%2222%22>🧺</text></svg>" />
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+<div id="ll-layout-root"></div>
+
+<template id="tpl-content">
+  <div class="space-y-4 ll-fade-in max-w-3xl">
+    <!-- Store profile -->
+    <form id="settings-form" class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5 space-y-4">
+      <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+        <span class="material-symbols-outlined text-cyan-400 text-[20px]">storefront</span> Profil Usaha
+      </h2>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Nama Usaha</label>
+          <input id="s-name" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Tagline</label>
+          <input id="s-tagline" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Telepon</label>
+          <input id="s-phone" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Email</label>
+          <input id="s-email" type="email" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Alamat</label>
+        <textarea id="s-address" rows="2" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"></textarea>
+      </div>
+
+      <h2 class="text-sm font-semibold text-white flex items-center gap-2 pt-2">
+        <span class="material-symbols-outlined text-cyan-400 text-[20px]">chat</span> Template Notifikasi WhatsApp
+      </h2>
+      <div>
+        <textarea id="s-wa" rows="3" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"></textarea>
+        <p class="text-[11px] text-slate-500 mt-1">Variabel yang tersedia: {nama}, {invoice}, {status}, {total}</p>
+      </div>
+
+      <h2 class="text-sm font-semibold text-white flex items-center gap-2 pt-2">
+        <span class="material-symbols-outlined text-cyan-400 text-[20px]">receipt_long</span> Catatan Kaki Struk/Invoice
+      </h2>
+      <div>
+        <textarea id="s-footer" rows="2" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"></textarea>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-white/5">
+        <button type="submit" class="px-5 py-2 rounded-lg text-sm font-medium bg-[#00bcd4] hover:bg-cyan-500 text-white flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">save</span> Simpan Pengaturan
+        </button>
+      </div>
+    </form>
+
+    <!-- Google Sheets connection -->
+    <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5 space-y-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-cyan-400 text-[20px]">cloud_sync</span> Koneksi Google Sheets
+          </h2>
+          <p class="text-xs text-slate-400 mt-1 max-w-xl">
+            Hubungkan aplikasi ke Google Spreadsheet lewat Web App Google Apps Script supaya data
+            pesanan, pelanggan, dan layanan tersimpan terpusat dan bisa diakses dari perangkat lain.
+            Kode backend siap pakai ada di folder <code class="text-cyan-300">/apps-script/Code.gs</code>.
+          </p>
+        </div>
+        <span id="conn-status-chip" class="shrink-0 text-[11px] font-medium px-2.5 py-1 rounded-full border"></span>
+      </div>
+
+      <form id="conn-form" class="grid sm:grid-cols-2 gap-4">
+        <div class="sm:col-span-2">
+          <label class="text-xs text-slate-400 mb-1 block">Web App URL</label>
+          <input id="conn-url" placeholder="https://script.google.com/macros/s/XXXXXXXX/exec"
+            class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="text-xs text-slate-400 mb-1 block">API Key</label>
+          <input id="conn-key" type="password" placeholder="Samakan dengan nilai API_KEY di Code.gs"
+            class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        </div>
+        <p id="conn-message" class="hidden sm:col-span-2 text-xs rounded-lg px-3 py-2 border"></p>
+        <div class="sm:col-span-2 flex flex-wrap gap-2">
+          <button type="button" id="btn-test-conn" class="px-4 py-2 rounded-lg text-sm text-slate-200 bg-white/5 hover:bg-white/10 flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px]">wifi_tethering</span> Tes Koneksi
+          </button>
+          <button type="submit" id="btn-save-conn" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-[#00bcd4] hover:bg-cyan-500 flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px]">cloud_upload</span> Sambungkan &amp; Gunakan Google Sheets
+          </button>
+          <button type="button" id="btn-disconnect" class="hidden px-4 py-2 rounded-lg text-sm text-red-300 bg-red-500/10 hover:bg-red-500/20 flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px]">cloud_off</span> Putuskan, Kembali ke Mode Lokal
+          </button>
+        </div>
+      </form>
+
+      <details class="text-xs text-slate-400 border-t border-white/5 pt-3">
+        <summary class="cursor-pointer text-slate-300 hover:text-white select-none">Langkah-langkah setup singkat</summary>
+        <ol class="list-decimal list-inside space-y-1 mt-2">
+          <li>Buat Google Spreadsheet baru → Extensions/Ekstensi → Apps Script.</li>
+          <li>Tempel isi <code class="text-cyan-300">apps-script/Code.gs</code>, ganti nilai <code class="text-cyan-300">API_KEY</code>.</li>
+          <li>Jalankan fungsi <code class="text-cyan-300">setupSheets</code> sekali (izinkan akses saat diminta).</li>
+          <li>Deploy → New deployment → tipe "Web app" → Execute as: Me, Access: Anyone → Deploy.</li>
+          <li>Tempel Web App URL dan API Key yang sama di atas, lalu klik "Tes Koneksi".</li>
+        </ol>
+      </details>
+    </div>
+
+    <!-- Data management -->
+    <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5 space-y-4">
+      <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+        <span class="material-symbols-outlined text-cyan-400 text-[20px]">database</span> Data Aplikasi (Cadangan Lokal)
+      </h2>
+      <p id="data-mode-note" class="text-xs text-slate-400"></p>
+      <div class="flex flex-wrap gap-2">
+        <button id="btn-export-json" class="px-4 py-2 rounded-lg text-sm text-slate-200 bg-white/5 hover:bg-white/10 flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">download</span> Ekspor Cadangan (JSON)
+        </button>
+        <label class="px-4 py-2 rounded-lg text-sm text-slate-200 bg-white/5 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer">
+          <span class="material-symbols-outlined text-[18px]">upload</span> Impor Cadangan (mode lokal)
+          <input id="import-file" type="file" accept="application/json" class="hidden" />
+        </label>
+        <button id="btn-reset" class="px-4 py-2 rounded-lg text-sm text-red-300 bg-red-500/10 hover:bg-red-500/20 flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">restart_alt</span> Reset ke Data Contoh (mode lokal)
+        </button>
+      </div>
+    </div>
+
+    <!-- Account -->
+    <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+      <h2 class="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+        <span class="material-symbols-outlined text-cyan-400 text-[20px]">badge</span> Akun
+      </h2>
+      <p class="text-sm text-slate-300" id="account-info"></p>
+      <p class="text-xs text-slate-500 mt-1">Kredensial demo: admin / admin123</p>
+    </div>
+  </div>
+</template>
+
+<script src="assets/js/db.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+  LL.requireAuth();
+  LLLayout.render('pengaturan.html');
+  LLLayout.setTitle('Pengaturan');
+  document.getElementById('ll-page-content').innerHTML = document.getElementById('tpl-content').innerHTML;
+
+  const session = LL.getSession();
+  document.getElementById('account-info').textContent = `Masuk sebagai ${session.name} (${session.role})`;
+
+  // ---------------- Store profile ----------------
+  async function loadSettingsForm() {
+    const db = await LL.getDB();
+    if (db._offline) LLLayout.toast('Gagal terhubung ke Google Sheets, menampilkan data cadangan lokal.', 'error');
+    const s = db.settings || {};
+    document.getElementById('s-name').value = s.storeName || '';
+    document.getElementById('s-tagline').value = s.tagline || '';
+    document.getElementById('s-phone').value = s.phone || '';
+    document.getElementById('s-email').value = s.email || '';
+    document.getElementById('s-address').value = s.address || '';
+    document.getElementById('s-wa').value = s.waTemplate || '';
+    document.getElementById('s-footer').value = s.invoiceFooter || '';
+  }
+  loadSettingsForm();
+
+  document.getElementById('settings-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      storeName: document.getElementById('s-name').value.trim() || 'MHC-Laundry',
+      tagline: document.getElementById('s-tagline').value.trim(),
+      phone: document.getElementById('s-phone').value.trim(),
+      email: document.getElementById('s-email').value.trim(),
+      address: document.getElementById('s-address').value.trim(),
+      waTemplate: document.getElementById('s-wa').value.trim(),
+      invoiceFooter: document.getElementById('s-footer').value.trim(),
+    };
+    try {
+      await LL.saveSettings(payload);
+      LLLayout.toast('Pengaturan berhasil disimpan.', 'success');
+    } catch (err) {
+      LLLayout.toast('Gagal menyimpan: ' + err.message, 'error');
+    }
+  });
+
+  // ---------------- Google Sheets connection ----------------
+  const connUrl = document.getElementById('conn-url');
+  const connKey = document.getElementById('conn-key');
+  const connMsg = document.getElementById('conn-message');
+  const statusChip = document.getElementById('conn-status-chip');
+  const dataModeNote = document.getElementById('data-mode-note');
+  const disconnectBtn = document.getElementById('btn-disconnect');
+  const importFile = document.getElementById('import-file');
+  const resetBtn = document.getElementById('btn-reset');
+
+  function refreshConnUi() {
+    const cfg = LL.getConfig();
+    connUrl.value = cfg.webAppUrl || '';
+    connKey.value = cfg.apiKey || '';
+    const connected = cfg.mode === 'remote' && cfg.webAppUrl;
+    if (connected) {
+      statusChip.className = 'shrink-0 text-[11px] font-medium px-2.5 py-1 rounded-full border bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+      statusChip.innerHTML = '<span class="material-symbols-outlined text-[14px] align-middle">cloud_done</span> Tersambung';
+      disconnectBtn.classList.remove('hidden');
+      dataModeNote.textContent = 'Aplikasi sedang membaca & menulis data langsung ke Google Sheets. Cadangan JSON di bawah tetap tersimpan otomatis sebagai fallback offline.';
+      importFile.closest('label').classList.add('opacity-50', 'pointer-events-none');
+      resetBtn.classList.add('opacity-50', 'pointer-events-none');
+    } else {
+      statusChip.className = 'shrink-0 text-[11px] font-medium px-2.5 py-1 rounded-full border bg-white/5 text-slate-400 border-white/10';
+      statusChip.innerHTML = '<span class="material-symbols-outlined text-[14px] align-middle">storage</span> Mode Lokal';
+      disconnectBtn.classList.add('hidden');
+      dataModeNote.textContent = 'Semua data disimpan secara lokal di browser perangkat ini (localStorage). Ekspor data secara berkala sebagai cadangan, atau sambungkan ke Google Sheets di atas agar data terpusat.';
+      importFile.closest('label').classList.remove('opacity-50', 'pointer-events-none');
+      resetBtn.classList.remove('opacity-50', 'pointer-events-none');
+    }
+  }
+  refreshConnUi();
+
+  function showConnMsg(text, ok) {
+    connMsg.textContent = text;
+    connMsg.className = 'sm:col-span-2 text-xs rounded-lg px-3 py-2 border ' +
+      (ok ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300');
+    connMsg.classList.remove('hidden');
+  }
+
+  document.getElementById('btn-test-conn').addEventListener('click', async () => {
+    const url = connUrl.value.trim();
+    const key = connKey.value.trim();
+    if (!url || !key) {
+      showConnMsg('Isi Web App URL dan API Key terlebih dahulu.', false);
+      return;
+    }
+    showConnMsg('Menguji koneksi...', true);
+    try {
+      const data = await LL.testConnection(url, key);
+      showConnMsg(`Koneksi berhasil! Ditemukan ${data.customers.length} pelanggan, ${data.services.length} layanan, ${data.orders.length} pesanan di spreadsheet.`, true);
+    } catch (err) {
+      showConnMsg('Koneksi gagal: ' + err.message, false);
+    }
+  });
+
+  document.getElementById('conn-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const url = connUrl.value.trim();
+    const key = connKey.value.trim();
+    if (!url || !key) {
+      showConnMsg('Isi Web App URL dan API Key terlebih dahulu.', false);
+      return;
+    }
+    showConnMsg('Memeriksa koneksi sebelum menyimpan...', true);
+    try {
+      await LL.testConnection(url, key);
+      LL.setConfig({ mode: 'remote', webAppUrl: url, apiKey: key });
+      showConnMsg('Tersambung! Aplikasi sekarang memakai Google Sheets sebagai database.', true);
+      LLLayout.toast('Berhasil tersambung ke Google Sheets.', 'success');
+      refreshConnUi();
+      loadSettingsForm();
+    } catch (err) {
+      showConnMsg('Gagal menyambungkan: ' + err.message, false);
+    }
+  });
+
+  disconnectBtn.addEventListener('click', () => {
+    if (!confirm('Putuskan koneksi Google Sheets dan kembali memakai data lokal (demo)?')) return;
+    LL.setConfig({ mode: 'local', webAppUrl: connUrl.value.trim(), apiKey: connKey.value.trim() });
+    LLLayout.toast('Kembali ke mode lokal.', 'success');
+    refreshConnUi();
+    loadSettingsForm();
+  });
+
+  // ---------------- Local backup (JSON export/import/reset) ----------------
+  document.getElementById('btn-export-json').addEventListener('click', async () => {
+    const db = await LL.getDB();
+    const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `MHC-Laundry-backup-${LL.todayISO()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    LLLayout.toast('Cadangan data diunduh.', 'success');
+  });
+
+  importFile.addEventListener('change', (e) => {
+    if (LL.isRemote()) { LLLayout.toast('Impor hanya tersedia di mode lokal. Putuskan koneksi Sheets dahulu.', 'error'); return; }
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data.orders || !data.customers || !data.services) throw new Error('format tidak sesuai');
+        localStorage.setItem('ll_db_v1', JSON.stringify(data));
+        LLLayout.toast('Data berhasil diimpor. Memuat ulang halaman...', 'success');
+        setTimeout(() => window.location.reload(), 1200);
+      } catch (err) {
+        LLLayout.toast('Gagal mengimpor: file JSON tidak valid.', 'error');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    if (LL.isRemote()) { LLLayout.toast('Reset hanya tersedia di mode lokal. Putuskan koneksi Sheets dahulu.', 'error'); return; }
+    if (!confirm('Ini akan mengganti semua data saat ini dengan data contoh. Lanjutkan?')) return;
+    LL.reset();
+    LLLayout.toast('Data direset ke contoh awal. Memuat ulang halaman...', 'success');
+    setTimeout(() => window.location.reload(), 1000);
+  });
+</script>
+</body>
+</html>

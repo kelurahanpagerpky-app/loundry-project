@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Laporan Keuangan | MHC-Laundry</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%22.9em%22 font-size=%2222%22>🧺</text></svg>" />
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link rel="stylesheet" href="assets/css/style.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="ll-layout-root"></div>
+
+<template id="tpl-content">
+  <div class="space-y-4 ll-fade-in">
+    <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+      <div class="flex items-center gap-2">
+        <label class="text-xs text-slate-400">Dari</label>
+        <input id="f-from" type="date" class="bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-xs text-slate-400">Sampai</label>
+        <input id="f-to" type="date" class="bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      </div>
+      <div class="flex gap-2 ml-auto">
+        <button data-range="7" class="range-btn px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-slate-300 hover:bg-white/10">7 Hari</button>
+        <button data-range="30" class="range-btn px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-slate-300 hover:bg-white/10">30 Hari</button>
+        <button data-range="all" class="range-btn px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-slate-300 hover:bg-white/10">Semua</button>
+        <button id="btn-export" class="px-3 py-1.5 rounded-full text-xs font-medium bg-[#00bcd4] hover:bg-cyan-500 text-white flex items-center gap-1">
+          <span class="material-symbols-outlined text-[16px]">download</span> Ekspor CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <p class="text-slate-400 text-xs font-medium mb-1">Total Pendapatan</p>
+        <p id="stat-total" class="text-2xl font-bold text-white">Rp0</p>
+      </div>
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <p class="text-slate-400 text-xs font-medium mb-1">Jumlah Pesanan</p>
+        <p id="stat-count" class="text-2xl font-bold text-white">0</p>
+      </div>
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <p class="text-slate-400 text-xs font-medium mb-1">Rata-rata / Pesanan</p>
+        <p id="stat-avg" class="text-2xl font-bold text-white">Rp0</p>
+      </div>
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <p class="text-slate-400 text-xs font-medium mb-1">Belum Lunas</p>
+        <p id="stat-unpaid" class="text-2xl font-bold text-red-300">Rp0</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <h2 class="text-sm font-semibold text-white mb-4">Tren Pendapatan</h2>
+        <canvas id="trend-chart" height="120"></canvas>
+      </div>
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <h2 class="text-sm font-semibold text-white mb-4">Pendapatan per Layanan</h2>
+        <canvas id="service-chart" height="180"></canvas>
+      </div>
+    </div>
+
+    <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-white/5">
+        <h2 class="text-sm font-semibold text-white">Rincian Transaksi</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-slate-400 text-xs uppercase tracking-wide border-b border-white/5">
+              <th class="px-5 py-3 font-medium">Invoice</th>
+              <th class="px-5 py-3 font-medium">Tanggal</th>
+              <th class="px-5 py-3 font-medium">Pelanggan</th>
+              <th class="px-5 py-3 font-medium">Total</th>
+              <th class="px-5 py-3 font-medium">Pembayaran</th>
+            </tr>
+          </thead>
+          <tbody id="report-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="assets/js/db.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+  LL.requireAuth();
+  LLLayout.render('laporan.html');
+  LLLayout.setTitle('Laporan Keuangan');
+  document.getElementById('ll-page-content').innerHTML = document.getElementById('tpl-content').innerHTML;
+
+  let db = { orders: [], customers: [], services: [] };
+  let trendChart, serviceChart;
+
+  const fromInput = document.getElementById('f-from');
+  const toInput = document.getElementById('f-to');
+
+  function allDates() {
+    return db.orders.map((o) => o.createdAt).sort();
+  }
+
+  function setRange(days) {
+    document.querySelectorAll('.range-btn').forEach((b) => b.classList.remove('bg-[#00bcd4]', 'text-white'));
+    if (days === 'all') {
+      const dates = allDates();
+      fromInput.value = dates[0] || LL.todayISO(-30);
+      toInput.value = LL.todayISO();
+    } else {
+      fromInput.value = LL.todayISO(-(days - 1));
+      toInput.value = LL.todayISO();
+    }
+    renderAll();
+  }
+
+  document.querySelectorAll('.range-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.range-btn').forEach((b) => b.classList.remove('bg-[#00bcd4]', 'text-white'));
+      btn.classList.add('bg-[#00bcd4]', 'text-white');
+      setRange(btn.dataset.range === 'all' ? 'all' : parseInt(btn.dataset.range, 10));
+    });
+  });
+  fromInput.addEventListener('change', renderAll);
+  toInput.addEventListener('change', renderAll);
+
+  function getFiltered() {
+    const from = fromInput.value;
+    const to = toInput.value;
+    return db.orders.filter((o) => (!from || o.createdAt >= from) && (!to || o.createdAt <= to) && o.status !== 'Batal');
+  }
+
+  function renderAll() {
+    const rows = getFiltered();
+    const total = rows.reduce((s, o) => s + o.total, 0);
+    const unpaid = rows.filter((o) => o.paymentStatus === 'Belum Lunas').reduce((s, o) => s + o.total, 0);
+
+    document.getElementById('stat-total').textContent = LL.fmtCurrency(total);
+    document.getElementById('stat-count').textContent = rows.length;
+    document.getElementById('stat-avg').textContent = LL.fmtCurrency(rows.length ? total / rows.length : 0);
+    document.getElementById('stat-unpaid').textContent = LL.fmtCurrency(unpaid);
+
+    // Table
+    const tbody = document.getElementById('report-body');
+    const sorted = [...rows].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    tbody.innerHTML =
+      sorted
+        .map((o) => {
+          const cust = db.customers.find((c) => c.id === o.customerId);
+          const payCls = o.paymentStatus === 'Lunas' ? 'text-emerald-300' : 'text-red-300';
+          return `<tr class="border-b border-white/5 last:border-0 hover:bg-white/[.02]">
+            <td class="px-5 py-3 font-medium text-white">${o.id}</td>
+            <td class="px-5 py-3 text-slate-400">${LL.fmtDate(o.createdAt)}</td>
+            <td class="px-5 py-3 text-slate-300">${cust ? cust.name : '—'}</td>
+            <td class="px-5 py-3 text-slate-300">${LL.fmtCurrency(o.total)}</td>
+            <td class="px-5 py-3 ${payCls}">${o.paymentStatus}</td>
+          </tr>`;
+        })
+        .join('') || `<tr><td colspan="5" class="px-5 py-8 text-center text-slate-500">Tidak ada transaksi pada rentang ini.</td></tr>`;
+
+    // Trend chart (by day within range)
+    const from = fromInput.value;
+    const to = toInput.value;
+    const dayLabels = [];
+    const dayValues = [];
+    if (from && to) {
+      let cursor = new Date(from + 'T00:00:00');
+      const end = new Date(to + 'T00:00:00');
+      let guard = 0;
+      while (cursor <= end && guard < 120) {
+        const iso = cursor.toISOString().slice(0, 10);
+        dayLabels.push(LL.fmtDate(iso).slice(0, 6));
+        dayValues.push(rows.filter((o) => o.createdAt === iso).reduce((s, o) => s + o.total, 0));
+        cursor.setDate(cursor.getDate() + 1);
+        guard++;
+      }
+    }
+    if (trendChart) trendChart.destroy();
+    trendChart = new Chart(document.getElementById('trend-chart'), {
+      type: 'line',
+      data: {
+        labels: dayLabels,
+        datasets: [{
+          label: 'Pendapatan',
+          data: dayValues,
+          borderColor: '#00bcd4',
+          backgroundColor: 'rgba(0,188,212,.15)',
+          fill: true,
+          tension: 0.3,
+        }],
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+          y: { ticks: { color: '#94a3b8', callback: (v) => 'Rp' + v / 1000 + 'rb' }, grid: { color: 'rgba(255,255,255,.05)' } },
+        },
+      },
+    });
+
+    // Service breakdown
+    const bySvc = {};
+    rows.forEach((o) => o.items.forEach((it) => { bySvc[it.name] = (bySvc[it.name] || 0) + it.price * it.qty; }));
+    const svcLabels = Object.keys(bySvc);
+    const svcValues = Object.values(bySvc);
+    if (serviceChart) serviceChart.destroy();
+    serviceChart = new Chart(document.getElementById('service-chart'), {
+      type: 'doughnut',
+      data: {
+        labels: svcLabels,
+        datasets: [{
+          data: svcValues,
+          backgroundColor: ['#00bcd4', '#2DD4BF', '#FBBF24', '#a78bfa', '#f472b6', '#60a5fa', '#34d399'],
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 10, font: { size: 10 } } } },
+      },
+    });
+  }
+
+  document.getElementById('btn-export').addEventListener('click', () => {
+    const rows = getFiltered();
+    const header = ['Invoice', 'Tanggal', 'Pelanggan', 'Total', 'Status Pembayaran', 'Status Pesanan'];
+    const lines = [header.join(',')];
+    rows.forEach((o) => {
+      const cust = db.customers.find((c) => c.id === o.customerId);
+      lines.push([o.id, o.createdAt, `"${cust ? cust.name : ''}"`, o.total, o.paymentStatus, o.status].join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `laporan-MHC-Laundry-${fromInput.value}_sd_${toInput.value}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    LLLayout.toast('Laporan CSV berhasil diunduh.', 'success');
+  });
+
+  // init: fetch data once, then default to last 30 days (all subsequent filtering is local/sync)
+  LL.getDB().then((data) => {
+    db = data;
+    if (db._offline) LLLayout.toast('Gagal terhubung ke Google Sheets, menampilkan data cadangan lokal.', 'error');
+    document.querySelector('[data-range="30"]').classList.add('bg-[#00bcd4]', 'text-white');
+    setRange(30);
+  });
+</script>
+</body>
+</html>

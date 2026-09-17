@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pelanggan | MHC-Laundry</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%22.9em%22 font-size=%2222%22>🧺</text></svg>" />
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+<div id="ll-layout-root"></div>
+
+<template id="tpl-content">
+  <div class="space-y-4 ll-fade-in">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <p class="text-slate-400 text-xs font-medium mb-1">Total Pelanggan</p>
+        <p id="stat-total" class="text-2xl font-bold text-white">0</p>
+      </div>
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <p class="text-slate-400 text-xs font-medium mb-1">Pelanggan VIP</p>
+        <p id="stat-vip" class="text-2xl font-bold text-amber-300">0</p>
+      </div>
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <p class="text-slate-400 text-xs font-medium mb-1">Reguler</p>
+        <p id="stat-reg" class="text-2xl font-bold text-cyan-300">0</p>
+      </div>
+      <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5">
+        <p class="text-slate-400 text-xs font-medium mb-1">Baru (Bronze)</p>
+        <p id="stat-bronze" class="text-2xl font-bold text-slate-300">0</p>
+      </div>
+    </div>
+
+    <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+      <div class="relative flex-1">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">search</span>
+        <input id="f-search" type="text" placeholder="Cari nama atau nomor telepon..."
+          class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      </div>
+      <select id="f-tier" class="bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+        <option value="">Semua Tingkat</option>
+        <option>VIP</option><option>Reguler</option><option>Bronze</option>
+      </select>
+    </div>
+
+    <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-slate-400 text-xs uppercase tracking-wide border-b border-white/5">
+              <th class="px-5 py-3 font-medium">Nama</th>
+              <th class="px-5 py-3 font-medium">Telepon</th>
+              <th class="px-5 py-3 font-medium">Tingkat</th>
+              <th class="px-5 py-3 font-medium">Poin</th>
+              <th class="px-5 py-3 font-medium">Bergabung</th>
+              <th class="px-5 py-3 font-medium">Total Pesanan</th>
+              <th class="px-5 py-3 font-medium text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="cust-body"></tbody>
+        </table>
+      </div>
+      <p id="empty-state" class="hidden text-center text-slate-500 py-10 text-sm">Tidak ada pelanggan yang cocok.</p>
+    </div>
+  </div>
+</template>
+
+<!-- Modal -->
+<div id="cust-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4">
+  <div class="bg-[#0d1c2d] border border-white/10 rounded-2xl w-full max-w-md">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-white/5">
+      <h3 id="modal-title" class="font-semibold text-white">Pelanggan Baru</h3>
+      <button id="modal-close" class="text-slate-400 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="cust-form" class="p-5 space-y-4">
+      <input type="hidden" id="cust-id" />
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Nama Lengkap</label>
+        <input id="cust-name" required class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">No. Telepon / WhatsApp</label>
+        <input id="cust-phone" required class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Alamat</label>
+        <textarea id="cust-address" rows="2" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"></textarea>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Poin Loyalitas</label>
+        <input id="cust-points" type="number" min="0" value="0" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        <p class="text-[11px] text-slate-500 mt-1">Tingkat dihitung otomatis: 0–49 Bronze, 50–399 Reguler, 400+ VIP.</p>
+      </div>
+      <div class="flex justify-end gap-2 border-t border-white/5 pt-4">
+        <button type="button" id="modal-cancel" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/5">Batal</button>
+        <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium bg-[#00bcd4] hover:bg-cyan-500 text-white">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="assets/js/db.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+  LL.requireAuth();
+  LLLayout.render('pelanggan.html');
+  LLLayout.setTitle('Manajemen Pelanggan');
+  LLLayout.setActions(`
+    <button id="btn-new-cust" class="bg-[#00bcd4] hover:bg-cyan-500 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-1.5">
+      <span class="material-symbols-outlined text-[18px]">person_add</span> Pelanggan Baru
+    </button>`);
+  document.getElementById('ll-page-content').innerHTML = document.getElementById('tpl-content').innerHTML;
+
+  let db = { customers: [], orders: [] };
+
+  async function refresh() {
+    db = await LL.getDB();
+    if (db._offline) LLLayout.toast('Gagal terhubung ke Google Sheets, menampilkan data cadangan lokal.', 'error');
+    renderStats();
+    renderTable();
+  }
+
+  const TIER_STYLES = {
+    VIP: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    Reguler: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
+    Bronze: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+  };
+  function tierBadge(tier) {
+    return `<span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium border ${TIER_STYLES[tier] || ''}">${tier}</span>`;
+  }
+
+  const state = { search: '', tier: '' };
+
+  function renderStats() {
+    document.getElementById('stat-total').textContent = db.customers.length;
+    document.getElementById('stat-vip').textContent = db.customers.filter((c) => c.tier === 'VIP').length;
+    document.getElementById('stat-reg').textContent = db.customers.filter((c) => c.tier === 'Reguler').length;
+    document.getElementById('stat-bronze').textContent = db.customers.filter((c) => c.tier === 'Bronze').length;
+  }
+
+  function renderTable() {
+    const rows = db.customers.filter((c) => {
+      const s = state.search;
+      const matchesSearch = !s || c.name.toLowerCase().includes(s) || c.phone.includes(s);
+      const matchesTier = !state.tier || c.tier === state.tier;
+      return matchesSearch && matchesTier;
+    });
+    const tbody = document.getElementById('cust-body');
+    const empty = document.getElementById('empty-state');
+    if (rows.length === 0) {
+      tbody.innerHTML = '';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    tbody.innerHTML = rows
+      .map((c) => {
+        const orderCount = db.orders.filter((o) => o.customerId === c.id).length;
+        return `
+        <tr class="border-b border-white/5 last:border-0 hover:bg-white/[.02]">
+          <td class="px-5 py-3 font-medium text-white">${c.name}</td>
+          <td class="px-5 py-3 text-slate-300">${c.phone}</td>
+          <td class="px-5 py-3">${tierBadge(c.tier)}</td>
+          <td class="px-5 py-3 text-slate-300">${c.points}</td>
+          <td class="px-5 py-3 text-slate-400">${LL.fmtDate(c.joinDate)}</td>
+          <td class="px-5 py-3 text-slate-300">${orderCount}</td>
+          <td class="px-5 py-3 text-right">
+            <div class="flex justify-end gap-1">
+              <button data-action="wa" data-id="${c.id}" title="Kirim WhatsApp" class="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-emerald-400">
+                <span class="material-symbols-outlined text-[18px]">chat</span>
+              </button>
+              <button data-action="edit" data-id="${c.id}" title="Ubah" class="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white">
+                <span class="material-symbols-outlined text-[18px]">edit</span>
+              </button>
+              <button data-action="delete" data-id="${c.id}" title="Hapus" class="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-red-400">
+                <span class="material-symbols-outlined text-[18px]">delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+      })
+      .join('');
+
+    tbody.querySelectorAll('[data-action="edit"]').forEach((b) => b.addEventListener('click', () => openModal(b.dataset.id)));
+    tbody.querySelectorAll('[data-action="delete"]').forEach((b) => b.addEventListener('click', () => deleteCust(b.dataset.id)));
+    tbody.querySelectorAll('[data-action="wa"]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const c = db.customers.find((x) => x.id === b.dataset.id);
+        const phone = c.phone.replace(/^0/, '62').replace(/\D/g, '');
+        const msg = encodeURIComponent(`Halo ${c.name}, terima kasih sudah menjadi pelanggan MHC-Laundry!`);
+        window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+      })
+    );
+  }
+
+  async function deleteCust(id) {
+    const hasOrders = db.orders.some((o) => o.customerId === id);
+    if (hasOrders && !confirm('Pelanggan ini memiliki riwayat pesanan. Tetap hapus datanya?')) return;
+    if (!hasOrders && !confirm('Hapus pelanggan ini?')) return;
+    try {
+      await LL.deleteCustomer(id);
+      await refresh();
+      LLLayout.toast('Pelanggan dihapus.', 'success');
+    } catch (err) {
+      LLLayout.toast('Gagal menghapus: ' + err.message, 'error');
+    }
+  }
+
+  document.getElementById('f-search').addEventListener('input', (e) => {
+    state.search = e.target.value.trim().toLowerCase();
+    renderTable();
+  });
+  document.getElementById('f-tier').addEventListener('change', (e) => {
+    state.tier = e.target.value;
+    renderTable();
+  });
+
+  // ---------- Modal ----------
+  const modal = document.getElementById('cust-modal');
+  const form = document.getElementById('cust-form');
+  function openModal(id) {
+    const c = id ? db.customers.find((x) => x.id === id) : null;
+    document.getElementById('modal-title').textContent = c ? `Ubah ${c.name}` : 'Pelanggan Baru';
+    document.getElementById('cust-id').value = c ? c.id : '';
+    document.getElementById('cust-name').value = c ? c.name : '';
+    document.getElementById('cust-phone').value = c ? c.phone : '';
+    document.getElementById('cust-address').value = c ? c.address : '';
+    document.getElementById('cust-points').value = c ? c.points : 0;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+  function closeModal() {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    form.reset();
+  }
+  document.getElementById('btn-new-cust').addEventListener('click', () => openModal(null));
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('cust-id').value;
+    const points = parseInt(document.getElementById('cust-points').value, 10) || 0;
+    const payload = {
+      id: id || undefined,
+      name: document.getElementById('cust-name').value.trim(),
+      phone: document.getElementById('cust-phone').value.trim(),
+      address: document.getElementById('cust-address').value.trim(),
+      points,
+      tier: LL.computeTier(points),
+    };
+    if (!payload.name || !payload.phone) {
+      LLLayout.toast('Nama dan telepon wajib diisi.', 'error');
+      return;
+    }
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      await LL.saveCustomer(payload);
+      LLLayout.toast(id ? 'Data pelanggan diperbarui.' : 'Pelanggan baru ditambahkan.', 'success');
+      closeModal();
+      await refresh();
+    } catch (err) {
+      LLLayout.toast('Gagal menyimpan: ' + err.message, 'error');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  refresh();
+</script>
+</body>
+</html>

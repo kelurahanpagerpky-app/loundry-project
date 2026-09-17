@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Layanan &amp; Harga | MHC-Laundry</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%22.9em%22 font-size=%2222%22>🧺</text></svg>" />
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+<div id="ll-layout-root"></div>
+
+<template id="tpl-content">
+  <div class="space-y-4 ll-fade-in">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="category-cards"></div>
+
+    <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-slate-400 text-xs uppercase tracking-wide border-b border-white/5">
+              <th class="px-5 py-3 font-medium">Layanan</th>
+              <th class="px-5 py-3 font-medium">Kategori</th>
+              <th class="px-5 py-3 font-medium">Harga</th>
+              <th class="px-5 py-3 font-medium">Satuan</th>
+              <th class="px-5 py-3 font-medium">Estimasi</th>
+              <th class="px-5 py-3 font-medium text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="svc-body"></tbody>
+        </table>
+      </div>
+      <p id="empty-state" class="hidden text-center text-slate-500 py-10 text-sm">Belum ada layanan.</p>
+    </div>
+  </div>
+</template>
+
+<!-- Modal -->
+<div id="svc-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4">
+  <div class="bg-[#0d1c2d] border border-white/10 rounded-2xl w-full max-w-md">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-white/5">
+      <h3 id="modal-title" class="font-semibold text-white">Layanan Baru</h3>
+      <button id="modal-close" class="text-slate-400 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <form id="svc-form" class="p-5 space-y-4">
+      <input type="hidden" id="svc-id" />
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Nama Layanan</label>
+        <input id="svc-name" required class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Kategori</label>
+        <select id="svc-category" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+          <option>Reguler</option><option>Express</option><option>Satuan</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Harga (Rp)</label>
+          <input id="svc-price" type="number" min="0" required class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Satuan</label>
+          <input id="svc-unit" placeholder="kg / pcs / pasang" required class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Estimasi Pengerjaan (jam)</label>
+        <input id="svc-eta" type="number" min="1" value="24" class="w-full bg-[#1e293b] border border-slate-700 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      </div>
+      <div class="flex justify-end gap-2 border-t border-white/5 pt-4">
+        <button type="button" id="modal-cancel" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/5">Batal</button>
+        <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium bg-[#00bcd4] hover:bg-cyan-500 text-white">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="assets/js/db.js"></script>
+<script src="assets/js/layout.js"></script>
+<script>
+  LL.requireAuth();
+  LLLayout.render('layanan.html');
+  LLLayout.setTitle('Layanan & Harga');
+  LLLayout.setActions(`
+    <button id="btn-new-svc" class="bg-[#00bcd4] hover:bg-cyan-500 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-1.5">
+      <span class="material-symbols-outlined text-[18px]">add</span> Layanan Baru
+    </button>`);
+  document.getElementById('ll-page-content').innerHTML = document.getElementById('tpl-content').innerHTML;
+
+  let db = { services: [], orders: [] };
+
+  async function refresh() {
+    db = await LL.getDB();
+    if (db._offline) LLLayout.toast('Gagal terhubung ke Google Sheets, menampilkan data cadangan lokal.', 'error');
+    renderCategoryCards();
+    renderTable();
+  }
+
+  const CAT_ICONS = { Reguler: 'local_laundry_service', Express: 'bolt', Satuan: 'checkroom' };
+  const CAT_COLORS = { Reguler: 'text-cyan-300 bg-cyan-500/10', Express: 'text-amber-300 bg-amber-500/10', Satuan: 'text-violet-300 bg-violet-500/10' };
+
+  function renderCategoryCards() {
+    const cats = ['Reguler', 'Express', 'Satuan'];
+    document.getElementById('category-cards').innerHTML = cats
+      .map((cat) => {
+        const count = db.services.filter((s) => s.category === cat).length;
+        return `
+        <div class="bg-[#0d1c2d] border border-white/5 rounded-2xl p-5 flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center ${CAT_COLORS[cat]}">
+            <span class="material-symbols-outlined">${CAT_ICONS[cat]}</span>
+          </div>
+          <div>
+            <p class="text-white font-semibold">${cat}</p>
+            <p class="text-slate-400 text-xs">${count} layanan</p>
+          </div>
+        </div>`;
+      })
+      .join('');
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('svc-body');
+    const empty = document.getElementById('empty-state');
+    if (db.services.length === 0) {
+      tbody.innerHTML = '';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    tbody.innerHTML = db.services
+      .map(
+        (s) => `
+      <tr class="border-b border-white/5 last:border-0 hover:bg-white/[.02]">
+        <td class="px-5 py-3 font-medium text-white">${s.name}</td>
+        <td class="px-5 py-3"><span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-medium ${CAT_COLORS[s.category]}">${s.category}</span></td>
+        <td class="px-5 py-3 text-slate-300">${LL.fmtCurrency(s.price)}</td>
+        <td class="px-5 py-3 text-slate-400">/${s.unit}</td>
+        <td class="px-5 py-3 text-slate-400">${s.etaHours} jam</td>
+        <td class="px-5 py-3 text-right">
+          <div class="flex justify-end gap-1">
+            <button data-action="edit" data-id="${s.id}" class="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+            <button data-action="delete" data-id="${s.id}" class="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-red-400"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+          </div>
+        </td>
+      </tr>`
+      )
+      .join('');
+    tbody.querySelectorAll('[data-action="edit"]').forEach((b) => b.addEventListener('click', () => openModal(b.dataset.id)));
+    tbody.querySelectorAll('[data-action="delete"]').forEach((b) => b.addEventListener('click', () => deleteSvc(b.dataset.id)));
+  }
+
+  async function deleteSvc(id) {
+    const inUse = db.orders.some((o) => (o.items || []).some((it) => it.serviceId === id));
+    if (inUse) {
+      LLLayout.toast('Layanan ini masih dipakai di riwayat pesanan dan tidak bisa dihapus.', 'error');
+      return;
+    }
+    if (!confirm('Hapus layanan ini?')) return;
+    try {
+      await LL.deleteService(id);
+      await refresh();
+      LLLayout.toast('Layanan dihapus.', 'success');
+    } catch (err) {
+      LLLayout.toast('Gagal menghapus: ' + err.message, 'error');
+    }
+  }
+
+  const modal = document.getElementById('svc-modal');
+  const form = document.getElementById('svc-form');
+  function openModal(id) {
+    const s = id ? db.services.find((x) => x.id === id) : null;
+    document.getElementById('modal-title').textContent = s ? `Ubah ${s.name}` : 'Layanan Baru';
+    document.getElementById('svc-id').value = s ? s.id : '';
+    document.getElementById('svc-name').value = s ? s.name : '';
+    document.getElementById('svc-category').value = s ? s.category : 'Reguler';
+    document.getElementById('svc-price').value = s ? s.price : '';
+    document.getElementById('svc-unit').value = s ? s.unit : 'kg';
+    document.getElementById('svc-eta').value = s ? s.etaHours : 24;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+  function closeModal() {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    form.reset();
+  }
+  document.getElementById('btn-new-svc').addEventListener('click', () => openModal(null));
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('svc-id').value;
+    const payload = {
+      id: id || undefined,
+      name: document.getElementById('svc-name').value.trim(),
+      category: document.getElementById('svc-category').value,
+      price: parseFloat(document.getElementById('svc-price').value) || 0,
+      unit: document.getElementById('svc-unit').value.trim() || 'kg',
+      etaHours: parseInt(document.getElementById('svc-eta').value, 10) || 24,
+    };
+    if (!payload.name || payload.price <= 0) {
+      LLLayout.toast('Nama dan harga layanan wajib diisi.', 'error');
+      return;
+    }
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      await LL.saveService(payload);
+      LLLayout.toast(id ? 'Layanan diperbarui.' : 'Layanan baru ditambahkan.', 'success');
+      closeModal();
+      await refresh();
+    } catch (err) {
+      LLLayout.toast('Gagal menyimpan: ' + err.message, 'error');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  refresh();
+</script>
+</body>
+</html>
