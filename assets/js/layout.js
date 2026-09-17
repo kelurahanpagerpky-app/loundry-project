@@ -1,5 +1,5 @@
 /**
- * LogicLaundry — Shared Layout
+ * MHC-Laundry — Shared Layout
  * Merender sidebar & topbar yang konsisten di semua halaman,
  * supaya navigasi antar-halaman benar-benar berfungsi.
  */
@@ -52,7 +52,7 @@
               <span class="material-symbols-outlined text-white">local_laundry_service</span>
             </div>
             <div class="min-w-0">
-              <p class="font-bold text-white leading-tight truncate">LogicLaundry</p>
+              <p class="font-bold text-white leading-tight truncate">MHC-Laundry</p>
               <p class="text-[11px] text-slate-400 truncate">Bersih, Cepat &amp; Terpercaya</p>
             </div>
           </div>
@@ -117,7 +117,7 @@
     const logoutBtn = document.getElementById("ll-logout");
     if (logoutBtn) {
       logoutBtn.addEventListener("click", () => {
-        if (confirm("Keluar dari LogicLaundry?")) {
+        if (confirm("Keluar dari MHC-Laundry?")) {
           LL.logout();
           window.location.href = "index.html";
         }
